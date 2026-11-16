@@ -4,7 +4,10 @@ import android.Manifest;
 import android.app.*;
 import android.bluetooth.*;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.*;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.*;
 import android.view.*;
 import android.widget.*;
@@ -26,6 +29,7 @@ public class MainActivity extends Activity {
   private TextView state;
   private Button simulate;
   private long demoStart;
+  private static final int BG=0xff0c0c0d, INK=0xfff4f2ec, DIM=0xff85837e, FAINT=0xff5e5c58, TRACK=0xff222224, AMBER=0xfff2a900, GREEN=0xff35c26b;
   private static final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
   @Override public void onCreate(Bundle saved) {
@@ -33,20 +37,31 @@ public class MainActivity extends Activity {
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     getWindow().getDecorView().setSystemUiVisibility(5894|1024|512);
     adapter=BluetoothAdapter.getDefaultAdapter();
-    LinearLayout root=new LinearLayout(this); root.setOrientation(1); root.setBackgroundColor(0xff0a0c0f);
+    LinearLayout root=new LinearLayout(this); root.setOrientation(1); root.setBackgroundColor(BG);
     dashboard=new Dashboard(); root.addView(dashboard,new LinearLayout.LayoutParams(-1,0,1));
-    LinearLayout bar=new LinearLayout(this); bar.setGravity(Gravity.CENTER_VERTICAL); bar.setPadding(22,4,22,8);
-    state=new TextView(this); state.setTextColor(0xffa2a7ad); state.setTextSize(12);
+    LinearLayout bar=new LinearLayout(this); bar.setGravity(Gravity.CENTER_VERTICAL); bar.setPadding(dp(20),dp(2),dp(20),dp(10));
+    state=new TextView(this); state.setTextColor(0xffa3a09a); state.setTextSize(13);
     bar.addView(state,new LinearLayout.LayoutParams(0,-2,1));
-    Button connect=new Button(this); connect.setText("OBD 연결"); bar.addView(connect);
-    simulate=new Button(this); simulate.setText("데모 보기"); bar.addView(simulate);
+    Button connect=button("OBD 연결",true); bar.addView(connect);
+    simulate=button("데모 보기",false);
+    LinearLayout.LayoutParams gap=new LinearLayout.LayoutParams(-2,-2); gap.leftMargin=dp(8); bar.addView(simulate,gap);
     root.addView(bar); setContentView(root);
     connect.setOnClickListener(v->chooseDevice());
     simulate.setOnClickListener(v->{if(demo) stop(); else startDemo();});
     render();
   }
+  private int dp(float v) {return Math.round(v*getResources().getDisplayMetrics().density);}
+  private Button button(String label,boolean filled) {
+    Button b=new Button(this); b.setText(label); b.setAllCaps(false); b.setTextSize(14);
+    b.setTextColor(filled?BG:INK); b.setStateListAnimator(null);
+    b.setMinWidth(0); b.setMinimumWidth(0); b.setMinHeight(dp(48)); b.setMinimumHeight(dp(48)); b.setPadding(dp(20),0,dp(20),0);
+    GradientDrawable shape=new GradientDrawable(); shape.setCornerRadius(dp(6));
+    if(filled) shape.setColor(INK); else {shape.setColor(BG); shape.setStroke(dp(1),0xff55534f);}
+    b.setBackground(new RippleDrawable(ColorStateList.valueOf(filled?0x33000000:0x33ffffff),shape,null));
+    return b;
+  }
   private void render() {
-    String message=status+"   /   "+rate;
+    String message=rate.equals("—")||rate.equals("시뮬레이션")?status:status+" · "+rate;
     if(!message.contentEquals(state.getText())) state.setText(message);
     String label=demo?"데모 종료":"데모 보기";
     if(!label.contentEquals(simulate.getText())) simulate.setText(label);
@@ -157,40 +172,48 @@ public class MainActivity extends Activity {
   class Dashboard extends View {
     final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     final Typeface regular=Typeface.create("sans-serif",Typeface.NORMAL);
-    final Typeface digits=Typeface.create("sans-serif-condensed",Typeface.BOLD_ITALIC);
+    final Typeface digits=Typeface.create("sans-serif-condensed",Typeface.BOLD);
     Canvas c;
     Dashboard() { super(MainActivity.this); }
-    void text(String s,float x,float y,float size,int color,boolean bold) {
-      p.setColor(color); p.setTypeface(bold?digits:regular); p.setTextSize(size); c.drawText(s,x,y,p);
+    float text(String s,float x,float y,float size,int color,boolean bold,Paint.Align align) {
+      p.setStyle(Paint.Style.FILL); p.setColor(color); p.setTypeface(bold?digits:regular); p.setTextSize(size); p.setTextAlign(align);
+      c.drawText(s,x,y,p); return p.measureText(s);
     }
     void rect(float x,float y,float width,float height,int color) {
-      p.setColor(color); c.drawRect(x,y,x+width,y+height,p);
+      p.setStyle(Paint.Style.FILL); p.setColor(color); c.drawRect(x,y,x+width,y+height,p);
     }
     String num(int v) {return v<0?"—":String.valueOf(v);}
     @Override protected void onDraw(Canvas canvas) {
       c=canvas; float scale=Math.min(getWidth()/900f,getHeight()/390f);
+      c.drawColor(BG);
       c.save(); c.translate((getWidth()-900*scale)/2,(getHeight()-390*scale)/2); c.scale(scale,scale);
-      c.drawColor(0xff101923);
-      rect(32,28,3,20,0xff8bb5ca); text("PITWALL",46,45,20,0xffe7f0f6,true);
-      text("TORRES  /  J150",175,44,12,0xff91a7b6,false);
-      text(demo?"DEMO  ·  시뮬레이션":"OBD-II  ·  차량 데이터",690,44,12,0xff91a7b6,false);
-      rect(32,64,836,1,0xff30404d);
-      text("SPEED",35,104,12,0xff91a7b6,false);
-      text(num(speed),27,222,112,0xfff1f6f9,true); text("km/h",245,221,19,0xffa5bbc9,false);
-      rect(358,91,1,166,0xff30404d);
-      text(pedalLabel.equals("스로틀 위치")?"THROTTLE":"ACCELERATOR",399,108,12,0xffb4c8d5,false);
-      p.setTextAlign(Paint.Align.RIGHT); text(pedal<0?"—":pedal+"%",864,112,25,0xffe8f4f7,true); p.setTextAlign(Paint.Align.LEFT);
-      rect(400,131,464,15,0xff263744);
-      if(pedal>=0) rect(400,131,464*Math.min(100,Math.max(0,pedal))/100f,15,0xff81c6d8);
-      text(pedalLabel,400,168,11,0xff7894a6,false);
-      text("BRAKE",399,205,12,0xff8c9fab,false);
-      p.setTextAlign(Paint.Align.RIGHT); text("—",864,209,25,0xff8195a2,true); p.setTextAlign(Paint.Align.LEFT);
-      rect(400,228,464,4,0xff263744); text("차량 신호 확인 필요",400,253,11,0xff7894a6,false);
-      rect(32,281,836,1,0xff30404d);
-      text("ENGINE",34,311,11,0xff91a7b6,false);
-      text(num(rpm),34,354,36,0xffe5eff6,true); text("rpm",147,353,13,0xff91a7b6,false);
-      for(int i=0;i<32;i++) rect(252+i*19,324,15,13,rpm>=0 && i<Math.min(32,rpm/250f)?0xff87b5ce:0xff263744);
-      text("0",252,356,10,0xff7894a6,false); text("4",552,356,10,0xff7894a6,false); text("8 × 1000",808,356,10,0xff7894a6,false);
+      final Paint.Align L=Paint.Align.LEFT, C=Paint.Align.CENTER, R=Paint.Align.RIGHT;
+
+      // 회전수 바: 1000 rpm마다 한 칸
+      rect(36,34,624,20,TRACK);
+      if(rpm>=0) rect(36,34,624*Math.min(8000,rpm)/8000f,20,AMBER);
+      for(int i=0;i<=8;i++) {
+        float x=36+624*i/8f;
+        if(i>0 && i<8) rect(x-1,34,2,20,BG);
+        text(String.valueOf(i),x,74,13,DIM,false,i==0?L:i==8?R:C);
+      }
+
+      // 속도와 회전수
+      float w=text(num(speed),32,290,168,INK,true,L);
+      text("km/h",32+w+12,290,22,DIM,false,L);
+      text(num(rpm),610,290,60,INK,true,R);
+      text("rpm",620,290,18,DIM,false,L);
+
+      // 페달
+      rect(712,62,68,268,TRACK);
+      if(pedal>=0) {float h=268*Math.min(100,Math.max(0,pedal))/100f; rect(712,330-h,68,h,GREEN);}
+      text(pedal<0?"—":pedal+"%",746,50,20,INK,true,C);
+      text(pedalLabel,746,354,13,DIM,false,C);
+
+      p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(0xff3a3a3c); c.drawRect(796.5f,62.5f,863.5f,329.5f,p);
+      text("미지원",830,200,12,FAINT,false,C);
+      text("—",830,50,20,FAINT,true,C);
+      text("브레이크",830,354,13,DIM,false,C);
       c.restore();
     }
   }

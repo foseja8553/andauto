@@ -15,7 +15,7 @@ mkdir -p build/manual/{classes,lib/arm64-v8a} downloads
 cp telemetry/target/aarch64-linux-android/release/libpitwall_telemetry.so build/manual/lib/arm64-v8a/
 python3 - <<'PY'
 from pathlib import Path
-s=Path('app/src/main/AndroidManifest.xml').read_text().replace('<manifest ', '<manifest package="com.torquescope" android:versionCode="4" android:versionName="0.4" ',1).replace('<uses-permission','<uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35"/><uses-permission',1)
+s=Path('app/src/main/AndroidManifest.xml').read_text().replace('<manifest ', '<manifest package="com.torquescope" android:versionCode="5" android:versionName="0.5" ',1).replace('<uses-permission','<uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35"/><uses-permission',1)
 Path('build/manual/AndroidManifest.xml').write_text(s)
 PY
 "$bt/aapt" package -f -M build/manual/AndroidManifest.xml -I "$jar" -F build/manual/unsigned.apk
