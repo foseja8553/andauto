@@ -154,10 +154,44 @@ public class MainActivity extends Activity {
 
   @Override protected void onStop() {stop(); super.onStop();}
   @Override protected void onDestroy() {stop(); ui.removeCallbacksAndMessages(null); deadlines.shutdownNow(); super.onDestroy();}
-  class Dashboard extends View {final Typeface boldFont=Typeface.create("sans-serif-condensed",Typeface.BOLD), normalFont=Typeface.create("sans-serif",Typeface.NORMAL); Paint p=new Paint(3); Canvas c; float w,h; Dashboard(){super(MainActivity.this);} void text(String s,float x,float y,float size,int color,boolean bold){p.setColor(color);p.setTextSize(size);p.setTypeface(bold?boldFont:normalFont);c.drawText(s,x,y,p);} void rect(float x,float y,float a,float b,int color){p.setColor(color);c.drawRect(x,y,a,b,p);} String num(int n){return n<0?"—":String.valueOf(n);}
-    protected void onDraw(Canvas canvas){c=canvas;w=getWidth();h=getHeight();float u=Math.min(w/900f,h/390f); c.save();c.translate((w-900*u)/2,(h-390*u)/2);c.scale(u,u);rect(0,0,900,390,0xff0a0c0f);rect(27,24,31,48,0xffe84539);text("PITWALL",42,45,25,0xfff1f2f2,true);text("TELEMETRY  /  01",750,42,13,0xff959ba2,true);rect(27,61,873,63,0xff343b41);
-      text("VEHICLE SPEED",30,98,13,0xffa2a9b0,true);text(num(speed),26,192,100,0xfff3f4f3,true);text("KM/H",31,219,14,0xff939ca4,true);rect(301,86,303,224,0xff343b41);text("ENGINE",330,98,13,0xffa2a9b0,true);text(num(rpm),326,192,77,0xfff3f4f3,true);text("RPM",331,219,14,0xff939ca4,true);
-      text("INPUT",30,263,13,0xffa2a9b0,true);text(pedalLabel,115,263,15,0xffe4e6e7,true);text(pedal<0?"—":pedal+"%",730,264,22,0xfff2f2f1,true);rect(30,278,870,299,0xff262c30); if(pedal>=0)rect(30,278,30+840*Math.max(0,Math.min(100,pedal))/100f,299,0xff47c6a2);for(int i=1;i<20;i++)rect(30+i*42,278,31+i*42,299,0xff0a0c0f);
-      text("BRAKE",30,338,14,0xff919ba2,true);text("차량 신호 확인 필요",115,338,14,0xff9aa2a8,false);rect(30,352,870,359,0xff262c30);c.restore(); }
+  class Dashboard extends View {
+    final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
+    final Typeface regular=Typeface.create("sans-serif",Typeface.NORMAL);
+    final Typeface digits=Typeface.create("sans-serif-condensed",Typeface.BOLD_ITALIC);
+    Canvas c;
+    Dashboard() { super(MainActivity.this); }
+    void text(String s,float x,float y,float size,int color,boolean bold) {
+      p.setColor(color); p.setTypeface(bold?digits:regular); p.setTextSize(size); c.drawText(s,x,y,p);
+    }
+    void rect(float x,float y,float width,float height,int color) {
+      p.setColor(color); c.drawRect(x,y,x+width,y+height,p);
+    }
+    String num(int v) {return v<0?"—":String.valueOf(v);}
+    @Override protected void onDraw(Canvas canvas) {
+      c=canvas; float scale=Math.min(getWidth()/900f,getHeight()/390f);
+      c.save(); c.translate((getWidth()-900*scale)/2,(getHeight()-390*scale)/2); c.scale(scale,scale);
+      c.drawColor(0xff101923);
+      rect(32,28,3,20,0xff8bb5ca); text("PITWALL",46,45,20,0xffe7f0f6,true);
+      text("TORRES  /  J150",175,44,12,0xff91a7b6,false);
+      text(demo?"DEMO  ·  시뮬레이션":"OBD-II  ·  차량 데이터",690,44,12,0xff91a7b6,false);
+      rect(32,64,836,1,0xff30404d);
+      text("SPEED",35,104,12,0xff91a7b6,false);
+      text(num(speed),27,222,112,0xfff1f6f9,true); text("km/h",245,221,19,0xffa5bbc9,false);
+      rect(358,91,1,166,0xff30404d);
+      text(pedalLabel.equals("스로틀 위치")?"THROTTLE":"ACCELERATOR",399,108,12,0xffb4c8d5,false);
+      p.setTextAlign(Paint.Align.RIGHT); text(pedal<0?"—":pedal+"%",864,112,25,0xffe8f4f7,true); p.setTextAlign(Paint.Align.LEFT);
+      rect(400,131,464,15,0xff263744);
+      if(pedal>=0) rect(400,131,464*Math.min(100,Math.max(0,pedal))/100f,15,0xff81c6d8);
+      text(pedalLabel,400,168,11,0xff7894a6,false);
+      text("BRAKE",399,205,12,0xff8c9fab,false);
+      p.setTextAlign(Paint.Align.RIGHT); text("—",864,209,25,0xff8195a2,true); p.setTextAlign(Paint.Align.LEFT);
+      rect(400,228,464,4,0xff263744); text("차량 신호 확인 필요",400,253,11,0xff7894a6,false);
+      rect(32,281,836,1,0xff30404d);
+      text("ENGINE",34,311,11,0xff91a7b6,false);
+      text(num(rpm),34,354,36,0xffe5eff6,true); text("rpm",147,353,13,0xff91a7b6,false);
+      for(int i=0;i<32;i++) rect(252+i*19,324,15,13,rpm>=0 && i<Math.min(32,rpm/250f)?0xff87b5ce:0xff263744);
+      text("0",252,356,10,0xff7894a6,false); text("4",552,356,10,0xff7894a6,false); text("8 × 1000",808,356,10,0xff7894a6,false);
+      c.restore();
+    }
   }
 }
