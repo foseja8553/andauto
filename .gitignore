@@ -6,3 +6,6 @@ local.properties
 *.iml
 
 /telemetry/target/
+
+*.idsig
+*.keystore
