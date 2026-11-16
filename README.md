@@ -11,12 +11,14 @@
 
 ## 안드로이드에서 사용하기
 
-`downloads/pitwall-prototype.apk`를 안드로이드 폰에 설치합니다. Android 6 이상을 대상으로 빌드했습니다. 폰의 블루투스 설정에서 동글을 먼저 페어링하고 앱에서 **OBD 연결**을 눌러 선택합니다. Android 12 이상은 주변 기기 권한을 허용한 뒤 다시 연결 버튼을 누릅니다. 일반 블루투스 SPP 방식 ELM327 호환 동글을 대상으로 하며 BLE 전용 제품은 지원하지 않습니다.
+`downloads/pitwall-prototype.apk`를 안드로이드 폰에 설치합니다. Android 6 이상, 64비트 ARM 기기(arm64-v8a)를 대상으로 빌드했습니다. 폰의 블루투스 설정에서 동글을 먼저 페어링하고 앱에서 **OBD 연결**을 눌러 선택합니다. Android 12 이상은 주변 기기 권한을 허용한 뒤 다시 연결 버튼을 누릅니다. 일반 블루투스 SPP 방식 ELM327 호환 동글을 대상으로 하며 BLE 전용 제품은 지원하지 않습니다.
 
 속도(PID 0D), RPM(0C), 가속 페달 D(49)를 표준 OBD-II로 요청합니다. 페달 D를 읽지 못하면 스로틀 위치(11)로 전환하고 화면의 이름을 바꿉니다. 두 값은 서로 다른 센서값입니다. 브레이크는 아직 읽지 않습니다. 차량, ECU, 동글의 지원에 따라 일부 또는 모든 값이 표시되지 않을 수 있습니다. 토레스 J150 실차와는 아직 검증하지 않았습니다. 앱은 휴대폰 가로 화면용이며 Android Auto 출력은 지원하지 않습니다.
 
 APK는 프로토타입 서명키로 서명된 테스트 빌드입니다. 신뢰할 수 있는 경로로 설치하고, 조작은 정차 중에 하세요.
 
-## 소스 빌드
+## 구조와 소스 빌드
 
-Android Studio에서 이 폴더를 열고 Android SDK 35와 Gradle 플러그인 의존성을 설치한 다음 `app`을 빌드합니다. 최소 SDK 23, 대상 SDK 35입니다. PC 미리보기는 별도의 빌드 과정이 없습니다.
+OBD 응답 분석과 단위 변환은 Rust (`telemetry`)로 구현했으며, 블루투스 SPP 연결과 안드로이드 화면은 Java로 구현했습니다. 이 앱 전체가 순수 Rust로 작성된 것은 아닙니다. Android Studio에서 루트 폴더를 엽니다. Android SDK 35, Android NDK r27d, Rust를 설치하고 `rustup target add aarch64-linux-android`를 실행하세요. Android Studio를 실행하는 환경에서 `ANDROID_NDK_HOME`을 NDK 경로로, `PATH`에 `cargo`를 설정한 뒤 `app`을 빌드합니다. Gradle의 `preBuild`가 Rust 라이브러리를 빌드해 APK에 포함합니다. 최소 SDK 23, 대상 SDK 35이며 현재 arm64-v8a만 빌드합니다. Rust 테스트는 `cd telemetry && cargo test`로 실행합니다. PC 미리보기는 별도의 빌드 과정이 없습니다.
+
+제공된 APK는 수동 도구 체인으로 빌드하고 서명을 검증했으며, Gradle 빌드와 실제 휴대폰 동작은 이 환경에서 아직 검증하지 않았습니다.
