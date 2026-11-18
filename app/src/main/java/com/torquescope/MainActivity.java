@@ -187,7 +187,7 @@ public class MainActivity extends Activity {
     }
     float rpmWidth=-1, pedalHeight=-1;
     long lastFrame;
-    void resetBars() {rpmWidth=pedalHeight=-1; lastFrame=0;}
+    void resetBars() {speedText.valid=rpmText.valid=pedalText.valid=false; rpmWidth=pedalHeight=-1; lastFrame=0;}
     float approach(float current,float target,float weight) {
       if(target<0 || current<0 || Math.abs(target-current)<0.35f) return target;
       return current+(target-current)*weight;
@@ -197,7 +197,54 @@ public class MainActivity extends Activity {
       p.setStyle(Paint.Style.FILL); p.setColor(color);
       c.drawRoundRect(x,y,x+w,y+h,2,2,p);
     }
-    String num(int v) {return v<0?"—":String.valueOf(v);}
+    final Readout speedText=new Readout(3), rpmText=new Readout(5), pedalText=new Readout(3);
+
+    // Each column follows the latest sample independently, including leading spaces.
+    class Readout {
+      final int[] glyph, previous;
+      final long[] changed;
+      final String[] characters={"0","1","2","3","4","5","6","7","8","9"};
+      boolean valid;
+
+      Readout(int columns) {
+        glyph=new int[columns];
+        previous=new int[columns];
+        changed=new long[columns];
+      }
+
+      boolean draw(int value,float edge,float baseline,float size,float pitch,long now) {
+        if(value<0) {
+          valid=false;
+          text("—",edge,baseline,size,INK,true,Paint.Align.RIGHT);
+          return false;
+        }
+        boolean moving=false;
+        int remaining=value;
+        for(int column=0;column<glyph.length;column++) {
+          int next=column==0 || remaining>0 ? remaining%10 : -1;
+          remaining/=10;
+          if(!valid || glyph[column]!=next) {
+            previous[column]=valid?glyph[column]:-1;
+            glyph[column]=next;
+            changed[column]=valid?now:now-90;
+          }
+          float progress=Math.min(1,(now-changed[column])/90f);
+          float fade=(1-progress)*(1-progress);
+          float x=edge-column*pitch;
+          if(fade>0 && previous[column]>=0) {
+            int oldColor=Color.argb(Math.round(100*fade),244,242,236);
+            text(characters[previous[column]],x,baseline-size*.025f*(1-fade),size,oldColor,true,Paint.Align.RIGHT);
+          }
+          if(next>=0) {
+            int newColor=Color.argb(255-Math.round(100*fade),244,242,236);
+            text(characters[next],x,baseline+size*.025f*fade,size,newColor,true,Paint.Align.RIGHT);
+          }
+          moving |= progress<1;
+        }
+        valid=true;
+        return moving;
+      }
+    }
     @Override protected void onDraw(Canvas canvas) {
       c=canvas; float scale=Math.min(getWidth()/900f,getHeight()/390f);
       c.drawColor(BG);
@@ -222,15 +269,16 @@ public class MainActivity extends Activity {
       }
 
       // 속도와 회전수
-      float w=text(num(speed),32,290,168,INK,true,L);
-      text("km/h",32+w+12,290,22,DIM,false,L);
-      text(num(rpm),610,290,60,INK,true,R);
+      boolean moving=speedText.draw(speed,314,290,168,96,now);
+      text("km/h",326,290,22,DIM,false,L);
+      moving |= rpmText.draw(rpm,610,290,60,35,now);
       text("rpm",620,290,18,DIM,false,L);
 
       // 페달
       bar(724,62,44,268,TRACK);
       bar(724,330-pedalHeight,44,pedalHeight,GREEN);
-      text(pedal<0?"—":pedal+"%",746,50,20,INK,true,C);
+      moving |= pedalText.draw(pedal,752,50,20,12,now);
+      if(pedal>=0) text("%",754,50,16,DIM,false,L);
       text(pedalLabel,746,354,13,DIM,false,C);
 
       p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(0xff3a3a3c); c.drawRect(808.5f,62.5f,851.5f,329.5f,p);
@@ -238,7 +286,7 @@ public class MainActivity extends Activity {
       text("—",830,50,20,FAINT,true,C);
       text("브레이크",830,354,13,DIM,false,C);
       c.restore();
-      if(rpmWidth!=rpmTarget || pedalHeight!=pedalTarget) postInvalidateOnAnimation();
+      if(moving || rpmWidth!=rpmTarget || pedalHeight!=pedalTarget) postInvalidateOnAnimation();
     }
   }
 }

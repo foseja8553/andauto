@@ -97,7 +97,42 @@ function text(s, x, y, size, color, bold, align = 'left') {
   ctx.fillText(s, x, y);
   return ctx.measureText(s).width;
 }
-const num = v => v < 0 ? '—' : String(v);
+function makeReadout(columns) {
+  const glyphs = Array.from({length: columns}, () => ({digit: -1, previous: -1, changed: 0}));
+  let valid = false;
+  return function(value, edge, baseline, size, pitch, now) {
+    if (value < 0) {
+      valid = false;
+      text('—', edge, baseline, size, INK, true, 'right');
+      return false;
+    }
+    let moving = false, remaining = value;
+    glyphs.forEach((glyph, column) => {
+      const next = column === 0 || remaining > 0 ? remaining % 10 : -1;
+      remaining = Math.trunc(remaining / 10);
+      if (!valid || glyph.digit !== next) {
+        glyph.previous = valid ? glyph.digit : -1;
+        glyph.digit = next;
+        glyph.changed = valid ? now : now - 90;
+      }
+      const progress = Math.max(0, Math.min(1, (now - glyph.changed) / 90));
+      const fade = (1 - progress) ** 2, x = edge - column * pitch;
+      if (fade > 0 && glyph.previous >= 0) {
+        ctx.globalAlpha = 100 / 255 * fade;
+        text(String(glyph.previous), x, baseline - size * .025 * (1-fade), size, INK, true, 'right');
+      }
+      if (next >= 0) {
+        ctx.globalAlpha = 1 - 100 / 255 * fade;
+        text(String(next), x, baseline + size * .025 * fade, size, INK, true, 'right');
+      }
+      ctx.globalAlpha = 1;
+      moving ||= progress < 1;
+    });
+    valid = true;
+    return moving;
+  };
+}
+const speedText = makeReadout(3), rpmText = makeReadout(5), pedalText = makeReadout(3);
 
 let rpmWidth = -1, pedalHeight = -1, lastFrame = 0, frame = 0;
 function approach(current, target, weight) {
@@ -130,22 +165,23 @@ function draw(now = performance.now()) {
   }
 
   // 속도와 회전수
-  const w = text(num(vals.speed), 32, 290, 168, INK, true);
-  text('km/h', 32 + w + 12, 290, 22, DIM, false);
-  text(num(vals.rpm), 610, 290, 60, INK, true, 'right');
+  const speedMoving = speedText(vals.speed, 314, 290, 168, 96, now);
+  text('km/h', 326, 290, 22, DIM, false);
+  const rpmMoving = rpmText(vals.rpm, 610, 290, 60, 35, now);
   text('rpm', 620, 290, 18, DIM, false);
 
   // 페달
   bar(724, 62, 44, 268, TRACK);
   bar(724, 330 - pedalHeight, 44, pedalHeight, GREEN);
-  text(vals.pedal < 0 ? '—' : vals.pedal + '%', 746, 50, 20, INK, true, 'center');
+  const pedalMoving = pedalText(vals.pedal, 752, 50, 20, 12, now);
+  if (vals.pedal >= 0) text('%', 754, 50, 16, DIM, false);
   text(pedalLabel, 746, 354, 13, DIM, false, 'center');
 
   ctx.strokeStyle = '#3a3a3c'; ctx.lineWidth = 1; ctx.strokeRect(808.5, 62.5, 43, 267);
   text('미지원', 830, 200, 12, '#5e5c58', false, 'center');
   text('—', 830, 50, 20, '#5e5c58', true, 'center');
   text('브레이크', 830, 354, 13, DIM, false, 'center');
-  if (mode === 'demo' || rpmWidth !== rpmTarget || pedalHeight !== pedalTarget) {
+  if (speedMoving || rpmMoving || pedalMoving || mode === 'demo' || rpmWidth !== rpmTarget || pedalHeight !== pedalTarget) {
     frame = requestAnimationFrame(animate);
   }
 }
