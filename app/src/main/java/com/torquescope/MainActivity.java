@@ -29,7 +29,7 @@ public class MainActivity extends Activity {
   private TextView state;
   private Button simulate;
   private long demoStart;
-  private static final int BG=0xff0c0c0d, INK=0xfff4f2ec, DIM=0xff85837e, FAINT=0xff5e5c58, TRACK=0xff222224, AMBER=0xfff2a900, GREEN=0xff35c26b;
+  private static final int BG=0xff101416, INK=0xfff4f2ec, DIM=0xff9caaa9, FAINT=0xff85928f, TRACK=0xff293136, LIME=0xffd0ed54, GREEN=0xff6ed6aa;
   private static final UUID SPP=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
   @Override public void onCreate(Bundle saved) {
@@ -175,7 +175,7 @@ public class MainActivity extends Activity {
   class Dashboard extends View {
     final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     final Typeface regular=Typeface.create("sans-serif",Typeface.NORMAL);
-    final Typeface digits=Typeface.create("sans-serif-condensed",Typeface.BOLD);
+    final Typeface digits=Typeface.create("sans-serif-condensed",Typeface.BOLD_ITALIC);
     Canvas c;
     Dashboard() { super(MainActivity.this); }
     float text(String s,float x,float y,float size,int color,boolean bold,Paint.Align align) {
@@ -258,33 +258,47 @@ public class MainActivity extends Activity {
       float pedalTarget=pedal<0?-1:268*Math.min(100,pedal)/100f;
       rpmWidth=approach(rpmWidth,rpmTarget,weight);
       pedalHeight=approach(pedalHeight,pedalTarget,weight);
-      text("회전수",36,32,14,INK,false,L);
-      text("× 1,000 rpm",660,32,12,DIM,false,R);
-      bar(36,45,624,12,TRACK);
-      bar(36,45,rpmWidth,12,AMBER);
+      rect(690,0,210,390,0xff171d20);
+      rect(690,0,1,390,TRACK);
+      c.save(); c.skew(-0.30f,0);
+      rect(46,24,7,17,LIME); rect(56,24,3,17,LIME);
+      c.restore();
+      text("PITWALL",64,41,23,INK,true,L);
+      text("TORRES   /   J150",660,39,14,DIM,false,R);
+      rect(36,55,624,1,TRACK);
+      text("ENGINE SPEED",36,84,13,DIM,false,L);
+      text("× 1,000 rpm",660,84,13,DIM,false,R);
+
+      c.save(); c.translate(42,98); c.skew(-0.34f,0);
+      rect(0,0,618,18,TRACK);
+      if(rpmWidth>0) rect(0,0,rpmWidth*618/624,18,LIME);
+      c.restore();
       for(int i=0;i<=8;i++) {
         float x=36+624*i/8f;
-        rect(Math.min(x,659),61,1,5,DIM);
-        text(String.valueOf(i),x,83,13,DIM,false,i==0?L:i==8?R:C);
+        rect(Math.min(659,x),121,1,5,DIM);
+        text(String.valueOf(i),x,144,14,DIM,false,i==0?L:i==8?R:C);
       }
 
-      // 속도와 회전수
-      boolean moving=speedText.draw(speed,314,290,168,96,now);
-      text("km/h",326,290,22,DIM,false,L);
-      moving |= rpmText.draw(rpm,610,290,60,35,now);
-      text("rpm",620,290,18,DIM,false,L);
+      text("속도",36,193,15,DIM,false,L);
+      boolean moving=speedText.draw(speed,305,319,148,86,now);
+      text("km/h",321,319,20,DIM,false,L);
+      rect(412,187,1,146,TRACK);
+      text("회전수",442,193,15,DIM,false,L);
+      moving |= rpmText.draw(rpm,656,291,56,33,now);
+      text("rpm",656,319,18,DIM,false,R);
 
-      // 페달
-      bar(724,62,44,268,TRACK);
-      bar(724,330-pedalHeight,44,pedalHeight,GREEN);
-      moving |= pedalText.draw(pedal,752,50,20,12,now);
-      if(pedal>=0) text("%",754,50,16,DIM,false,L);
-      text(pedalLabel,746,354,13,DIM,false,C);
-
-      p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(0xff3a3a3c); c.drawRect(808.5f,62.5f,851.5f,329.5f,p);
-      text("미지원",830,200,12,FAINT,false,C);
-      text("—",830,50,20,FAINT,true,C);
-      text("브레이크",830,354,13,DIM,false,C);
+      text("페달 입력",714,40,16,INK,false,L);
+      rect(714,55,162,1,TRACK);
+      bar(726,83,38,268,TRACK);
+      bar(726,351-pedalHeight,38,pedalHeight,GREEN);
+      moving |= pedalText.draw(pedal,751,75,17,10,now);
+      if(pedal>=0) text("%",754,75,13,DIM,false,L);
+      text(pedalLabel,745,375,13,DIM,false,C);
+      p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(0xff495456);
+      c.drawRect(820.5f,83.5f,857.5f,350.5f,p);
+      text("미지원",839,222,11,FAINT,false,C);
+      text("—",839,75,17,FAINT,true,C);
+      text("브레이크",839,375,13,DIM,false,C);
       c.restore();
       if(moving || rpmWidth!=rpmTarget || pedalHeight!=pedalTarget) postInvalidateOnAnimation();
     }

@@ -18,13 +18,13 @@ h1 { font-size: 22px; margin: 0 0 6px; }
 h2 { font-size: 16px; margin: 0 0 4px; }
 p { margin: 0; line-height: 1.6; color: #5d5a54; font-size: 14px; }
 
-.phone { margin: 24px 0 32px; background: #0c0c0d; border-radius: 22px; padding: 10px 14px 12px; }
+.phone { margin: 24px 0 32px; background: #101416; border-radius: 8px; padding: 10px 14px 12px; }
 canvas { display: block; width: 100%; height: auto; }
 .bar { display: flex; align-items: center; gap: 8px; padding: 2px 22px 4px; }
 .bar span { flex: 1; min-width: 0; font-size: 13px; color: #a3a09a; }
 .bar button { background: none; color: #f4f2ec; border: 1px solid #55534f; border-radius: 6px; padding: 10px 18px; }
 .bar button:hover { background: #1d1d1f; }
-.bar button.main { background: #f4f2ec; color: #0c0c0d; border-color: #f4f2ec; }
+.bar button.main { background: #d0ed54; color: #101416; border-color: #d0ed54; }
 .bar button.main:hover { background: #fff; }
 
 button { font: inherit; font-size: 14px; cursor: pointer; background: #fff; color: #1b1a18; border: 1px solid #b9b5ad; border-radius: 6px; padding: 9px 16px; }
@@ -51,7 +51,7 @@ input[type=range] { width: 100%; accent-color: #1b1a18; }
 <body>
 <main>
   <h1>PITWALL PC 미리보기</h1>
-  <p>안드로이드 앱 화면을 브라우저에서 그대로 그린 것입니다. 실제 OBD 연결은 없고, 보이는 값은 모두 시뮬레이션입니다.</p>
+  <p>데모를 재생하거나 가속 입력과 회전수를 직접 조절해 보세요.</p>
 
   <div class="phone">
     <canvas id="display" width="1800" height="780" aria-label="속도, 엔진 회전수, 가속 페달을 표시하는 앱 화면"></canvas>
@@ -62,7 +62,7 @@ input[type=range] { width: 100%; accent-color: #1b1a18; }
     </div>
   </div>
 
-  <h2>값 직접 넣어 보기</h2>
+  <h2>수동 입력</h2>
   <p>슬라이더를 움직이면 데모가 멈추고 넣은 값이 화면에 표시됩니다.</p>
   <div class="sliders">
     <div><label for="speed">속도 <output id="speedOut"></output></label><input id="speed" type="range" min="0" max="200" value="65"></div>
@@ -80,8 +80,8 @@ const $ = s => document.querySelector(s);
 const canvas = $('#display'), ctx = canvas.getContext('2d');
 ctx.scale(2, 2); // 앱과 같은 900×390 좌표계, 선명도를 위해 2배로 그림
 
-const BG = '#0c0c0d', INK = '#f4f2ec', DIM = '#85837e', TRACK = '#222224';
-const AMBER = '#f2a900', GREEN = '#35c26b';
+const BG = '#101416', INK = '#f4f2ec', DIM = '#9caaa9', TRACK = '#293136';
+const LIME = '#d0ed54', GREEN = '#6ed6aa';
 const DIGITS = '"Roboto Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif';
 const LABEL = '"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",Roboto,sans-serif';
 
@@ -93,7 +93,7 @@ let vals = { speed: -1, rpm: -1, pedal: -1 };
 function rect(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); }
 function text(s, x, y, size, color, bold, align = 'left') {
   ctx.fillStyle = color; ctx.textAlign = align;
-  ctx.font = `${bold ? 700 : 400} ${size}px ${bold ? DIGITS : LABEL}`;
+  ctx.font = `${bold ? 'italic 700' : 400} ${size}px ${bold ? DIGITS : LABEL}`;
   ctx.fillText(s, x, y);
   return ctx.measureText(s).width;
 }
@@ -154,33 +154,43 @@ function draw(now = performance.now()) {
   rpmWidth = approach(rpmWidth, rpmTarget, weight);
   pedalHeight = approach(pedalHeight, pedalTarget, weight);
   rect(0, 0, 900, 390, BG);
-  text('회전수', 36, 32, 14, INK, false);
-  text('× 1,000 rpm', 660, 32, 12, DIM, false, 'right');
-  bar(36, 45, 624, 12, TRACK);
-  bar(36, 45, rpmWidth, 12, AMBER);
+  rect(690, 0, 210, 390, '#171d20');
+  rect(690, 0, 1, 390, TRACK);
+  ctx.save(); ctx.transform(1, 0, -.30, 1, 0, 0);
+  rect(46, 24, 7, 17, LIME); rect(56, 24, 3, 17, LIME);
+  ctx.restore();
+  text('PITWALL', 64, 41, 23, INK, true);
+  text('TORRES   /   J150', 660, 39, 14, DIM, false, 'right');
+  rect(36, 55, 624, 1, TRACK);
+  text('ENGINE SPEED', 36, 84, 13, DIM, false);
+  text('× 1,000 rpm', 660, 84, 13, DIM, false, 'right');
+  ctx.save(); ctx.translate(42, 98); ctx.transform(1, 0, -.34, 1, 0, 0);
+  rect(0, 0, 618, 18, TRACK);
+  if (rpmWidth > 0) rect(0, 0, rpmWidth * 618 / 624, 18, LIME);
+  ctx.restore();
   for (let i = 0; i <= 8; i++) {
     const x = 36 + 624 * i / 8;
-    rect(Math.min(x, 659), 61, 1, 5, DIM);
-    text(String(i), x, 83, 13, DIM, false, i === 0 ? 'left' : i === 8 ? 'right' : 'center');
+    rect(Math.min(x,659),121,1,5,DIM);
+    text(String(i),x,144,14,DIM,false,i===0?'left':i===8?'right':'center');
   }
-
-  // 속도와 회전수
-  const speedMoving = speedText(vals.speed, 314, 290, 168, 96, now);
-  text('km/h', 326, 290, 22, DIM, false);
-  const rpmMoving = rpmText(vals.rpm, 610, 290, 60, 35, now);
-  text('rpm', 620, 290, 18, DIM, false);
-
-  // 페달
-  bar(724, 62, 44, 268, TRACK);
-  bar(724, 330 - pedalHeight, 44, pedalHeight, GREEN);
-  const pedalMoving = pedalText(vals.pedal, 752, 50, 20, 12, now);
-  if (vals.pedal >= 0) text('%', 754, 50, 16, DIM, false);
-  text(pedalLabel, 746, 354, 13, DIM, false, 'center');
-
-  ctx.strokeStyle = '#3a3a3c'; ctx.lineWidth = 1; ctx.strokeRect(808.5, 62.5, 43, 267);
-  text('미지원', 830, 200, 12, '#5e5c58', false, 'center');
-  text('—', 830, 50, 20, '#5e5c58', true, 'center');
-  text('브레이크', 830, 354, 13, DIM, false, 'center');
+  text('속도',36,193,15,DIM,false);
+  const speedMoving = speedText(vals.speed,305,319,148,86,now);
+  text('km/h',321,319,20,DIM,false);
+  rect(412,187,1,146,TRACK);
+  text('회전수',442,193,15,DIM,false);
+  const rpmMoving = rpmText(vals.rpm,656,291,56,33,now);
+  text('rpm',656,319,18,DIM,false,'right');
+  text('페달 입력',714,40,16,INK,false);
+  rect(714,55,162,1,TRACK);
+  bar(726,83,38,268,TRACK);
+  bar(726,351-pedalHeight,38,pedalHeight,GREEN);
+  const pedalMoving = pedalText(vals.pedal,751,75,17,10,now);
+  if(vals.pedal>=0) text('%',754,75,13,DIM,false);
+  text(pedalLabel,745,375,13,DIM,false,'center');
+  ctx.strokeStyle='#495456'; ctx.lineWidth=1; ctx.strokeRect(820.5,83.5,37,267);
+  text('미지원',839,222,11,'#85928f',false,'center');
+  text('—',839,75,17,'#85928f',true,'center');
+  text('브레이크',839,375,13,DIM,false,'center');
   if (speedMoving || rpmMoving || pedalMoving || mode === 'demo' || rpmWidth !== rpmTarget || pedalHeight !== pedalTarget) {
     frame = requestAnimationFrame(animate);
   }
