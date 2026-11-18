@@ -92,7 +92,7 @@ public class MainActivity extends Activity {
     Session old=active; active=null;
     if(old!=null) old.close();
     demo=false; ui.removeCallbacks(demoFrame);
-    rpm=speed=pedal=-1; rate="—"; status="OBD 연결 대기"; render();
+    dashboard.resetBars(); rpm=speed=pedal=-1; rate="—"; status="OBD 연결 대기"; render();
   }
   private final Runnable demoFrame=new Runnable() { public void run() {
     if(!demo) return;
@@ -185,6 +185,18 @@ public class MainActivity extends Activity {
     void rect(float x,float y,float width,float height,int color) {
       p.setStyle(Paint.Style.FILL); p.setColor(color); c.drawRect(x,y,x+width,y+height,p);
     }
+    float rpmWidth=-1, pedalHeight=-1;
+    long lastFrame;
+    void resetBars() {rpmWidth=pedalHeight=-1; lastFrame=0;}
+    float approach(float current,float target,float weight) {
+      if(target<0 || current<0 || Math.abs(target-current)<0.35f) return target;
+      return current+(target-current)*weight;
+    }
+    void bar(float x,float y,float w,float h,int color) {
+      if(w<=0 || h<=0) return;
+      p.setStyle(Paint.Style.FILL); p.setColor(color);
+      c.drawRoundRect(x,y,x+w,y+h,2,2,p);
+    }
     String num(int v) {return v<0?"—":String.valueOf(v);}
     @Override protected void onDraw(Canvas canvas) {
       c=canvas; float scale=Math.min(getWidth()/900f,getHeight()/390f);
@@ -192,13 +204,21 @@ public class MainActivity extends Activity {
       c.save(); c.translate((getWidth()-900*scale)/2,(getHeight()-390*scale)/2); c.scale(scale,scale);
       final Paint.Align L=Paint.Align.LEFT, C=Paint.Align.CENTER, R=Paint.Align.RIGHT;
 
-      // 회전수 바: 1000 rpm마다 한 칸
-      rect(36,34,624,20,TRACK);
-      if(rpm>=0) rect(36,34,624*Math.min(8000,rpm)/8000f,20,AMBER);
+      long now=SystemClock.uptimeMillis();
+      float weight=(float)-Math.expm1(-Math.min(32,Math.max(1,now-lastFrame))/22.0);
+      lastFrame=now;
+      float rpmTarget=rpm<0?-1:624*Math.min(8000,rpm)/8000f;
+      float pedalTarget=pedal<0?-1:268*Math.min(100,pedal)/100f;
+      rpmWidth=approach(rpmWidth,rpmTarget,weight);
+      pedalHeight=approach(pedalHeight,pedalTarget,weight);
+      text("회전수",36,32,14,INK,false,L);
+      text("× 1,000 rpm",660,32,12,DIM,false,R);
+      bar(36,45,624,12,TRACK);
+      bar(36,45,rpmWidth,12,AMBER);
       for(int i=0;i<=8;i++) {
         float x=36+624*i/8f;
-        if(i>0 && i<8) rect(x-1,34,2,20,BG);
-        text(String.valueOf(i),x,74,13,DIM,false,i==0?L:i==8?R:C);
+        rect(Math.min(x,659),61,1,5,DIM);
+        text(String.valueOf(i),x,83,13,DIM,false,i==0?L:i==8?R:C);
       }
 
       // 속도와 회전수
@@ -208,16 +228,17 @@ public class MainActivity extends Activity {
       text("rpm",620,290,18,DIM,false,L);
 
       // 페달
-      rect(712,62,68,268,TRACK);
-      if(pedal>=0) {float h=268*Math.min(100,Math.max(0,pedal))/100f; rect(712,330-h,68,h,GREEN);}
+      bar(724,62,44,268,TRACK);
+      bar(724,330-pedalHeight,44,pedalHeight,GREEN);
       text(pedal<0?"—":pedal+"%",746,50,20,INK,true,C);
       text(pedalLabel,746,354,13,DIM,false,C);
 
-      p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(0xff3a3a3c); c.drawRect(796.5f,62.5f,863.5f,329.5f,p);
+      p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(0xff3a3a3c); c.drawRect(808.5f,62.5f,851.5f,329.5f,p);
       text("미지원",830,200,12,FAINT,false,C);
       text("—",830,50,20,FAINT,true,C);
       text("브레이크",830,354,13,DIM,false,C);
       c.restore();
+      if(rpmWidth!=rpmTarget || pedalHeight!=pedalTarget) postInvalidateOnAnimation();
     }
   }
 }

@@ -99,16 +99,34 @@ function text(s, x, y, size, color, bold, align = 'left') {
 }
 const num = v => v < 0 ? '—' : String(v);
 
-function draw() {
+let rpmWidth = -1, pedalHeight = -1, lastFrame = 0, frame = 0;
+function approach(current, target, weight) {
+  if (target < 0 || current < 0 || Math.abs(target - current) < 0.35) return target;
+  return current + (target - current) * weight;
+}
+function bar(x, y, width, height, color) {
+  if (width <= 0 || height <= 0) return;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, 2);
+  ctx.fill();
+}
+function draw(now = performance.now()) {
+  const weight = -Math.expm1(-Math.min(32, Math.max(1, now - lastFrame)) / 22);
+  lastFrame = now;
+  const rpmTarget = vals.rpm < 0 ? -1 : 624 * Math.min(8000, vals.rpm) / 8000;
+  const pedalTarget = vals.pedal < 0 ? -1 : 268 * Math.min(100, vals.pedal) / 100;
+  rpmWidth = approach(rpmWidth, rpmTarget, weight);
+  pedalHeight = approach(pedalHeight, pedalTarget, weight);
   rect(0, 0, 900, 390, BG);
-
-  // 회전수 바: 1000 rpm마다 한 칸
-  rect(36, 34, 624, 20, TRACK);
-  if (vals.rpm >= 0) rect(36, 34, 624 * Math.min(8000, vals.rpm) / 8000, 20, AMBER);
+  text('회전수', 36, 32, 14, INK, false);
+  text('× 1,000 rpm', 660, 32, 12, DIM, false, 'right');
+  bar(36, 45, 624, 12, TRACK);
+  bar(36, 45, rpmWidth, 12, AMBER);
   for (let i = 0; i <= 8; i++) {
     const x = 36 + 624 * i / 8;
-    if (i > 0 && i < 8) rect(x - 1, 34, 2, 20, BG);
-    text(String(i), x, 74, 13, DIM, false, i === 0 ? 'left' : i === 8 ? 'right' : 'center');
+    rect(Math.min(x, 659), 61, 1, 5, DIM);
+    text(String(i), x, 83, 13, DIM, false, i === 0 ? 'left' : i === 8 ? 'right' : 'center');
   }
 
   // 속도와 회전수
@@ -118,22 +136,21 @@ function draw() {
   text('rpm', 620, 290, 18, DIM, false);
 
   // 페달
-  rect(712, 62, 68, 268, TRACK);
-  if (vals.pedal >= 0) {
-    const h = 268 * Math.min(100, Math.max(0, vals.pedal)) / 100;
-    rect(712, 330 - h, 68, h, GREEN);
-  }
+  bar(724, 62, 44, 268, TRACK);
+  bar(724, 330 - pedalHeight, 44, pedalHeight, GREEN);
   text(vals.pedal < 0 ? '—' : vals.pedal + '%', 746, 50, 20, INK, true, 'center');
   text(pedalLabel, 746, 354, 13, DIM, false, 'center');
 
-  ctx.strokeStyle = '#3a3a3c'; ctx.lineWidth = 1; ctx.strokeRect(796.5, 62.5, 67, 267);
+  ctx.strokeStyle = '#3a3a3c'; ctx.lineWidth = 1; ctx.strokeRect(808.5, 62.5, 43, 267);
   text('미지원', 830, 200, 12, '#5e5c58', false, 'center');
   text('—', 830, 50, 20, '#5e5c58', true, 'center');
   text('브레이크', 830, 354, 13, DIM, false, 'center');
+  if (mode === 'demo' || rpmWidth !== rpmTarget || pedalHeight !== pedalTarget) {
+    frame = requestAnimationFrame(animate);
+  }
 }
 
 function outputs() { for (const k of fields) $('#' + k + 'Out').textContent = $('#' + k).value + units[k]; }
-let frame;
 function manual() {
   cancelAnimationFrame(frame);
   mode = 'manual';
@@ -155,6 +172,7 @@ $('#reset').onclick = reset;
 $('#connect').onclick = () => { $('#status').textContent = 'PC 미리보기에서는 OBD에 연결할 수 없습니다'; };
 $('#demo').onclick = () => {
   if (mode === 'demo') { reset(); return; }
+  cancelAnimationFrame(frame);
   mode = 'demo'; start = performance.now();
   $('#status').textContent = '데모 데이터 · 실제 차량값 아님';
   $('#demo').textContent = '데모 종료';
@@ -164,9 +182,8 @@ function animate(now) {
   if (mode === 'demo') {
     const pedal = Math.trunc(50 + 45 * Math.sin((now - start) / 1000 * .8));
     vals = { pedal, rpm: Math.trunc(1500 + pedal * 35), speed: Math.trunc(35 + pedal * .7) };
-    draw();
   }
-  frame = requestAnimationFrame(animate);
+  draw(now);
 }
 draw(); outputs();
 </script>
