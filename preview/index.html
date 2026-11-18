@@ -133,7 +133,9 @@ function draw() {
 }
 
 function outputs() { for (const k of fields) $('#' + k + 'Out').textContent = $('#' + k).value + units[k]; }
+let frame;
 function manual() {
+  cancelAnimationFrame(frame);
   mode = 'manual';
   for (const k of fields) vals[k] = Number($('#' + k).value);
   $('#status').textContent = '직접 넣은 값 · 실제 차량값 아님';
@@ -141,6 +143,7 @@ function manual() {
   outputs(); draw();
 }
 function reset() {
+  cancelAnimationFrame(frame);
   mode = 'waiting'; vals = { speed: -1, rpm: -1, pedal: -1 };
   $('#status').textContent = 'OBD 연결 대기';
   $('#demo').textContent = '데모 보기';
@@ -155,6 +158,7 @@ $('#demo').onclick = () => {
   mode = 'demo'; start = performance.now();
   $('#status').textContent = '데모 데이터 · 실제 차량값 아님';
   $('#demo').textContent = '데모 종료';
+  frame = requestAnimationFrame(animate);
 };
 function animate(now) {
   if (mode === 'demo') {
@@ -162,9 +166,9 @@ function animate(now) {
     vals = { pedal, rpm: Math.trunc(1500 + pedal * 35), speed: Math.trunc(35 + pedal * .7) };
     draw();
   }
-  requestAnimationFrame(animate);
+  frame = requestAnimationFrame(animate);
 }
-draw(); outputs(); requestAnimationFrame(animate);
+draw(); outputs();
 </script>
 </body>
 </html>

@@ -123,7 +123,8 @@ public class MainActivity extends Activity {
       s.command("0100",12000);
       publish(s,()->status="OBD 연결됨 · 표준 PID");
       boolean usePedal=true; int failures=0, samples=0;
-      long nextRpm=0,nextSpeed=0,window=SystemClock.elapsedRealtime();
+      PollSchedule schedule=new PollSchedule();
+      long window=SystemClock.elapsedRealtime();
       while(!s.closed) {
         long started=SystemClock.elapsedRealtime();
         int value=decodeObd(s.command(usePedal?"0149":"0111",3000),usePedal?0x49:0x11);
@@ -131,19 +132,21 @@ public class MainActivity extends Activity {
         publish(s,()->{pedal=value; pedalLabel=label;});
         if(value>=0) failures=0;
         else if(usePedal && ++failures>=2) usePedal=false;
-        long now=SystemClock.elapsedRealtime(); samples++;
+        long now=SystemClock.elapsedRealtime();
+        if(value>=0) samples++;
         if(now-window>=1000) {
           String measured=String.format(Locale.US,"입력 %.1f Hz · 응답 %d ms",samples*1000.0/(now-window),now-started);
           publish(s,()->rate=measured); samples=0; window=now;
         }
         // Request only one secondary value between pedal samples.
         // RPM <= 5 Hz, speed <= 2 Hz; pedal gets every remaining slot.
-        if(now>=nextSpeed) {
+        int secondary=schedule.next(now);
+        if(secondary==0x0d) {
           int v=decodeObd(s.command("010D",3000),0x0d);
-          publish(s,()->speed=v); nextSpeed=SystemClock.elapsedRealtime()+500;
-        } else if(now>=nextRpm) {
+          publish(s,()->speed=v); schedule.completed(secondary,SystemClock.elapsedRealtime());
+        } else if(secondary==0x0c) {
           int v=decodeObd(s.command("010C",3000),0x0c);
-          publish(s,()->rpm=v); nextRpm=SystemClock.elapsedRealtime()+200;
+          publish(s,()->rpm=v); schedule.completed(secondary,SystemClock.elapsedRealtime());
         }
       }
     } catch(Exception e) {
